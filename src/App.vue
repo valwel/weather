@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-
+    <h1>Погода в ростове-на-Дону</h1>
     <div v-if="current" class="card">
       <div class="card__time">Сейчас {{ current.time }}</div>
       <div class="card__temp">
