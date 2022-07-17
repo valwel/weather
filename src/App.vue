@@ -29,7 +29,10 @@
 
     <h2>Последние 5 дней</h2>
 
-    <ChartComp :data="chartData" />
+    <ChartComp 
+    :data="chartData"
+    :height="height"
+    />
   </div>
 </template>
 
@@ -42,7 +45,6 @@ export default {
     return {
       forecast: [],
       current: null,
-      historyTemperature: [],
       apiOptions: {
         lon: 39.7139,
         lat: 47.2364,
@@ -51,9 +53,10 @@ export default {
         weatherApiKey: 'c88f0e14775ebe6af4f4fa97503fcccf',
       },
       chartData: {
-        labels: ['26.05', '25.05', '24.05', '23.05', '22.05'],
-        datasets: [{ data: [25, 20, 12, 11, 27] }]
-      }
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      height: 200
     }
   },
 
@@ -76,15 +79,12 @@ export default {
     setForecast(forecast) {
       return this.forecast = forecast
     },
-    setHistory(historyTemp) {
-      return this.historyTemperature = historyTemp
-    },
 
     async show() {
       const f = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${this.apiOptions.lat}&lon=${this.apiOptions.lon}&units=${this.apiOptions.units}&lang=${this.apiOptions.lang}&appid=${this.apiOptions.weatherApiKey}`);
       const data = await f.json();
 
-      const foo = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${this.apiOptions.lat}&lon=${this.apiOptions.lon}&cnt=24&&units=${this.apiOptions.units}&lang=${this.apiOptions.lang}&appid=${this.apiOptions.weatherApiKey}`);
+      const foo = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${this.apiOptions.lat}&lon=${this.apiOptions.lon}&cnt=6&&units=${this.apiOptions.units}&lang=${this.apiOptions.lang}&appid=${this.apiOptions.weatherApiKey}`);
       const dataForecast = await foo.json();
 
       this.setCurrent(
@@ -102,22 +102,21 @@ export default {
       }, 60 * 1000)
     },
 
-    // async history() {
-    //   const fet = await fetch(`http://api.weatherapi.com/v1/history.json?key=8284a5e9a6a44cdcb08184947222206&q=47.2364,39.7139&dt=2022-06-25`);
-    //   const dataHistory = await fet.json();
-    //   this.setHistory(dataHistory.forecast.forecastday[0].day)
-    //   console.log(dataHistory.forecast.forecastday[0].day);
-    // }
+    async history() {
+      Array.from(new Array(5)).forEach(async (item, index) => {
+        item = await fetch(`http://api.weatherapi.com/v1/history.json?key=8284a5e9a6a44cdcb08184947222206&q=47.2364,39.7139&dt=${new Date(Date.now() - 86400000 * (index + 1)).toLocaleDateString()}`)
+        const dataHistory = await item.json();
+        this.chartData.datasets[0].data.push(dataHistory.forecast.forecastday[0].day.avgtemp_c);
+      })
+    }
 
   },
   mounted() {
     this.show();
-    // this.history();
-    const result = []
+    this.history();
     Array.from(new Array(5)).forEach(async (item, index) => {
-      result.push(new Date(Date.now() - 86400000 * index).toLocaleDateString())
-    })
-    console.log(result)
+      this.chartData.labels.push(new Date(Date.now() - 86400000 * (index + 1)).toLocaleDateString())
+    });
   }
 }
 </script>
@@ -167,10 +166,8 @@ h1 {
   margin-top: -15px;
 
   .card {
-
     margin-left: 15px;
     margin-top: 15px;
-
   }
 
   @media (max-width: 768px) {
@@ -220,7 +217,6 @@ h1 {
     }
   }
 
-
   &--small {
     min-width: 300px;
 
@@ -229,35 +225,6 @@ h1 {
         font-size: 40px;
       }
     }
-  }
-
-
-}
-
-.graph {
-  display: flex;
-  border: 1px solid #aeaeae;
-  width: 50%;
-  height: 180px;
-  margin: 0 auto;
-  position: relative;
-
-  &__shell {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    display: flex;
-  }
-
-  &__item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 2px;
-    background-color: #2c3e50;
-    color: #ffffff;
-    width: 25%;
-    height: 70px;
   }
 }
 </style>
