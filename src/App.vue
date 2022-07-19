@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-
+    <h1>Погода в ростове-на-Дону</h1>
     <div v-if="current" class="card">
       <div class="card__time">Сейчас {{ current.time }}</div>
       <div class="card__temp">
@@ -27,10 +27,17 @@
       </div>
     </div>
 
+    <h2>Последние 5 дней</h2>
+
+    <ChartComp 
+    :data="chartData"
+    :height="height"
+    />
   </div>
 </template>
 
 <script>
+import ChartComp from '@/components/Chart.vue'
 
 export default {
   name: 'App',
@@ -45,9 +52,17 @@ export default {
         lang: 'ru',
         weatherApiKey: 'c88f0e14775ebe6af4f4fa97503fcccf',
       },
+      chartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      height: 200
     }
   },
 
+  components: {
+    ChartComp
+  },
   methods: {
     getWeatherValue(temp) {
       const rounded = Math.round(temp)
@@ -69,7 +84,7 @@ export default {
       const f = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${this.apiOptions.lat}&lon=${this.apiOptions.lon}&units=${this.apiOptions.units}&lang=${this.apiOptions.lang}&appid=${this.apiOptions.weatherApiKey}`);
       const data = await f.json();
 
-      const foo = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${this.apiOptions.lat}&lon=${this.apiOptions.lon}&cnt=5&&units=${this.apiOptions.units}&lang=${this.apiOptions.lang}&appid=${this.apiOptions.weatherApiKey}`);
+      const foo = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${this.apiOptions.lat}&lon=${this.apiOptions.lon}&cnt=6&&units=${this.apiOptions.units}&lang=${this.apiOptions.lang}&appid=${this.apiOptions.weatherApiKey}`);
       const dataForecast = await foo.json();
 
       this.setCurrent(
@@ -87,9 +102,21 @@ export default {
       }, 60 * 1000)
     },
 
+    async history() {
+      Array.from(new Array(5)).forEach(async (item, index) => {
+        item = await fetch(`http://api.weatherapi.com/v1/history.json?key=8284a5e9a6a44cdcb08184947222206&q=47.2364,39.7139&dt=${new Date(Date.now() - 86400000 * (index + 1)).toLocaleDateString()}`)
+        const dataHistory = await item.json();
+        this.chartData.datasets[0].data.push(dataHistory.forecast.forecastday[0].day.avgtemp_c);
+      })
+    }
+
   },
   mounted() {
     this.show();
+    this.history();
+    Array.from(new Array(5)).forEach(async (item, index) => {
+      this.chartData.labels.push(new Date(Date.now() - 86400000 * (index + 1)).toLocaleDateString())
+    });
   }
 }
 </script>
@@ -139,10 +166,8 @@ h1 {
   margin-top: -15px;
 
   .card {
-
     margin-left: 15px;
     margin-top: 15px;
-
   }
 
   @media (max-width: 768px) {
@@ -191,7 +216,6 @@ h1 {
       font-size: 30px;
     }
   }
-
 
   &--small {
     min-width: 300px;
