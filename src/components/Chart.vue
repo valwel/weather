@@ -54,6 +54,9 @@ export default {
       type: Array,
       default: () => {}
     },
+  },
+  onMounted(){
+    console.log(this.$props.data)
   }
 }
 </script>
