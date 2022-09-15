@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-
+    <h1>Погода в Ростове-на-Дону</h1>
     <div v-if="current" class="card">
       <div class="card__time">Сейчас {{ current.time }}</div>
       <div class="card__temp">
@@ -27,10 +27,14 @@
       </div>
     </div>
 
+    <h2>Последние 5 дней</h2>
+
+    <ChartComp :data="chartData" :height="height" />
   </div>
 </template>
 
 <script>
+import ChartComp from '@/components/Chart.vue'
 
 export default {
   name: 'App',
@@ -45,9 +49,17 @@ export default {
         lang: 'ru',
         weatherApiKey: 'c88f0e14775ebe6af4f4fa97503fcccf',
       },
+      chartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      height: 200
     }
   },
 
+  components: {
+    ChartComp
+  },
   methods: {
     getWeatherValue(temp) {
       const rounded = Math.round(temp)
@@ -66,30 +78,67 @@ export default {
     },
 
     async show() {
-      const f = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${this.apiOptions.lat}&lon=${this.apiOptions.lon}&units=${this.apiOptions.units}&lang=${this.apiOptions.lang}&appid=${this.apiOptions.weatherApiKey}`);
-      const data = await f.json();
+      const searchParams = new URLSearchParams({
+        lat: this.apiOptions.lat,
+        lon: this.apiOptions.lon,
+        units: this.apiOptions.units,
+        lang: this.apiOptions.lang,
+        appid: this.apiOptions.weatherApiKey,
+        cnt: 6
+      }).toString();
 
-      const foo = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${this.apiOptions.lat}&lon=${this.apiOptions.lon}&cnt=5&&units=${this.apiOptions.units}&lang=${this.apiOptions.lang}&appid=${this.apiOptions.weatherApiKey}`);
-      const dataForecast = await foo.json();
+      try {
+        const currentWeatherResponse = await fetch('https://api.openweathermap.org/data/2.5/weather?' + searchParams);
+        const currentWeatherData = await currentWeatherResponse.json();
 
-      this.setCurrent(
-        {
-          temp: this.getWeatherValue(data.main.temp),
-          icon: data.weather[0].icon,
-          description: data.weather[0].description,
-          time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-        }
-      );
-      this.setForecast(dataForecast.list);
+        const forecastResponse = await fetch('https://api.openweathermap.org/data/2.5/forecast?' + searchParams);
+        const forecastData = await forecastResponse.json();
 
-      setInterval( () => {
+        this.setCurrent(
+          {
+            temp: this.getWeatherValue(currentWeatherData.main.temp),
+            icon: currentWeatherData.weather[0].icon,
+            description: currentWeatherData.weather[0].description,
+            time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+          }
+        );
+        this.setForecast(forecastData.list);
+      }
+
+      catch (e) {
+        console.error('ошибОчка', e)
+      }
+
+      setInterval(() => {
         this.show()
       }, 60 * 1000)
     },
 
+    async history() {
+      Array.from(new Array(5)).forEach(async (_, index) => {
+        try {
+          const historyParams = new URLSearchParams({
+            key: '8284a5e9a6a44cdcb08184947222206',
+            q: '47.2364,39.7139',
+            dt: this.chartData.labels[index]
+          }).toString();
+          const response = await fetch('http://api.weatherapi.com/v1/history.json?' + historyParams)
+          const historyData = await response.json();
+          this.chartData.datasets[0].data.push(historyData.forecast.forecastday[0].day.avgtemp_c);
+
+        } catch (error) {
+          console.error('Внутри цикла', error)
+        }
+      });
+    }
   },
   mounted() {
+    Array.from(new Array(5)).forEach(async (_, index) => {
+      this.chartData.labels.push(new Date(Date.now() - 86400000 * (index + 1)).toLocaleDateString());
+    })
     this.show();
+    this.history();
+
   }
 }
 </script>
@@ -139,10 +188,8 @@ h1 {
   margin-top: -15px;
 
   .card {
-
     margin-left: 15px;
     margin-top: 15px;
-
   }
 
   @media (max-width: 768px) {
@@ -191,7 +238,6 @@ h1 {
       font-size: 30px;
     }
   }
-
 
   &--small {
     min-width: 300px;
